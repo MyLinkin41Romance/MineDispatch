@@ -1,0 +1,111 @@
+{
+    "mine": {
+      "name": "ZongyangMine"
+    },
+    "dispatcher": {
+      "type": ["FixedGroupDispatcher","SQDispatcher","ImprovedAntColonyDispatcher"]
+    },
+    "charging_site": {
+      "name": "ChargingSite",
+      "position": [0, 0],
+      "trucks": [
+        {"type": "OilTruck", "count": 6, "capacity": 100, "speed": 20}
+      ]
+    },
+    "load_sites": [
+      {
+        "name": "LoadSite1",
+        "position": [0.485, 0.533],
+        "shovels": [
+          {"name": "Shovel-1", "tons": 100, "cycle_time": 2,"position_offset": [0,0]}
+          
+        ],
+        "parkinglot": {
+          "name": "LoadSite1-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "LoadSite2",
+        "position": [0.810, 0.430],
+        "shovels": [
+          {"name": "Shovel-2", "tons": 100, "cycle_time": 2,"position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "LoadSite2-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      }
+     
+    ],
+    "dump_sites": [
+      {
+        "name": "DumpSite1",
+        "position": [0.276, 0.184],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "DumpSite1-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "DumpSite2",
+        "position": [0.245, 0.160],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "DumpSite2-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "DumpSite3",
+        "position": [0.937, 0.186],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "DumpSite3-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "DumpSite4",
+        "position": [0.945, 0.213],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "DumpSite4-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "DumpSite5",
+        "position": [0.988, 0.247],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "DumpSite5-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      }
+    ],
+    "road": {
+      "road_matrix": [
+        [3.08, 3.17, 3.76, 3.51, 3.26],
+        [4.235, 4.325, 1.905, 1.655, 1.405]
+      ],
+      "charging_to_load_road_matrix": [0.650, 0.430],
+      "road_event_params": {
+          "lambda_repair": 1e-6,
+          "mu_repair_duration": 0
+      }
+    },
+    "sim_time": 480
+  }
+  

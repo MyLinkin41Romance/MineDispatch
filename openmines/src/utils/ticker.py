@@ -221,6 +221,7 @@ class TickGenerator:
                     "time":cur_time,
                     "state":status,
                     "position":list(truck_position if truck_position is not None else (0.5,0.5)),
+                    "dest_code": truck.target_location.name if truck.target_location else "Unknown"
                 }
                 truck_states[truck.name] = truck_state
 
@@ -381,20 +382,19 @@ class TickGenerator:
 
 
     def write_to_file(self, file_name):
-        """
-        将ticks写入文件
-        :param file_path:
-        :return:
-        """
-        file_path = os.path.join(self.result_path, file_name)
+        # 替换文件名中的非法字符 ":" 为 "-"
+        sanitized_file_name = file_name.replace(":", "-")
+        file_path = os.path.join(self.result_path, sanitized_file_name)
+        
         with open(file_path, "w") as f:
             try:
-                json.dump(self.ticks,f)
-                print("file_name:{} write success".format(file_name))
+                json.dump(self.ticks, f)
+                print(f"file_name:{sanitized_file_name} write success")
             except Exception as e:
                 print(e)
-                print("file_name:{} write failed".format(file_name))
+                print(f"file_name:{sanitized_file_name} write failed")
         return self.ticks
+
 
     def read_from_file(self, file_name):
         """
@@ -410,3 +410,48 @@ class TickGenerator:
             except Exception as e:
                 print(e)
                 print("file_name:{} read failed".format(file_name))
+
+    def write_truck_states_to_file(self, file_name):
+        """
+        生成符合新格式的只包含 truck_states 的 JSON 文件。
+
+        :param file_name: 生成文件的文件名
+        """
+        sanitized_file_name = file_name.replace(":", "-")
+        file_path = os.path.join(self.result_path, sanitized_file_name)
+        
+        # 构造新格式的数据
+        truck_states_new_format = []
+
+        for tick, tick_data in self.ticks.items():
+            if "truck_states" in tick_data:
+                for truck_name, truck_info in tick_data["truck_states"].items():
+                    # 提取 timestamp 和 truck_vin 的值
+                    timestamp = tick  # 使用 tick 作为 timestamp 值
+                    truck_vin = truck_name  # 使用 truck_name 作为 truck_vin 值
+
+                    new_entry = {
+                        "command": "truc_scheduling",
+                        "signature": "",  # 保留变量名，不赋值
+                        "flowId": "",     # 保留变量名，不赋值
+                        "timestamp": timestamp,  # 从 tick 获取
+                        "data": {
+                            "truck_vin": truck_vin,         # 从 truck_name 获取
+                            "type": truck_info["state"],   # 之前的 state
+                            "dest_code": truck_info["dest_code"]  # 之前的 dest_code
+                        }
+                    }
+                    truck_states_new_format.append(new_entry)
+
+        # 写入新格式的 JSON 文件
+        with open(file_path, "w") as f:
+            try:
+                json.dump(truck_states_new_format, f, indent=4)
+                print(f"Truck states file created: {sanitized_file_name}")
+            except Exception as e:
+                print(e)
+                print(f"Failed to write truck states file: {sanitized_file_name}")
+
+
+
+                

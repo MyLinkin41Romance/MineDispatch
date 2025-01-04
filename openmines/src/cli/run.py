@@ -69,7 +69,7 @@ def run_dispatch_sim(dispatcher: BaseDispatcher, config_file):
         for dumper_config in dump_site_config['dumpers']:
             for _ in range(dumper_config['count']):
                 dumper = Dumper(
-                    name=f"{dump_site_config['name']}-点位{_}",
+                    name=f"{dump_site_config['name']}-{_}",
                     dumper_cycle_time=dumper_config['cycle_time'],
                     position_offset=dumper_config['position_offset']
                 )
@@ -99,38 +99,69 @@ def run_simulation(config_file=None):
     config = load_config(config_file)
     charter = Charter(config_file)
     states_dict = dict()
-    # 初始化调度器
-    # 定义dispatch_algorithms所在的路径
+    
+    # [调试信息 1] - 配置文件信息
+    print("\n=== Configuration Info ===")
+    print(f"Config file: {config_file}")
+    print(f"Requested dispatcher types: {config['dispatcher']['type']}")
+    
     dispatchers_package = 'openmines.src.dispatch_algorithms'
-    # 导入dispatch_algorithms包
     dispatchers_module = importlib.import_module(dispatchers_package)
-    # 遍历dispatch_algorithms包中的所有模块
     dispatchers_list = []
-    for _, module_name, _ in pkgutil.iter_modules(dispatchers_module.__path__, dispatchers_package + '.'):
-        # 动态导入模块
-        module = importlib.import_module(module_name)
-        # 假设配置中指定的调度器类型
-        dispatcher_types:list = config['dispatcher']['type']
-        for dispatcher_type in dispatcher_types:
-            # 检查模块中是否有该类
-            if hasattr(module, dispatcher_type):
-                dispatcher_class = getattr(module, dispatcher_type)
-                dispatcher = dispatcher_class()
-                if dispatcher.name not in [dispatcher.name for dispatcher in dispatchers_list]:
-                    dispatchers_list.append(dispatcher)
+    
+    # [调试信息 2] - 模块扫描
+    print("\n=== Module Scanning ===")
+    print(f"Scanning for dispatch algorithms in: {dispatchers_package}")
+    
+    print("Scanning directory:", dispatchers_module.__path__)
 
-    # 开始运行对比实验
+    for _, module_name, _ in pkgutil.iter_modules(dispatchers_module.__path__, dispatchers_package + '.'):
+        try:
+            # [调试信息 3] - 模块加载
+            print(f"\nLoading module: {module_name}")
+            module = importlib.import_module(module_name)
+            
+            # [调试信息 4] - 模块类信息
+            module_classes = [x for x in dir(module) if isinstance(getattr(module, x), type)]
+            print(f"Classes found in {module_name}: {module_classes}")
+            
+            dispatcher_types = config['dispatcher']['type']
+            for dispatcher_type in dispatcher_types:
+                if hasattr(module, dispatcher_type):
+                    dispatcher_class = getattr(module, dispatcher_type)
+                    dispatcher = dispatcher_class()
+                    if dispatcher.name not in [d.name for d in dispatchers_list]:
+                        # [调试信息 5] - 调度器添加
+                        print(f"Adding dispatcher: {dispatcher.name}")
+                        dispatchers_list.append(dispatcher)
+                        
+        except Exception as e:
+            # [调试信息 6] - 错误捕获
+            print(f"Error loading module {module_name}: {str(e)}")
+    
+    # [调试信息 7] - 最终调度器列表
+    print("\n=== Dispatcher Summary ===")
+    print(f"Found dispatchers: {[d.name for d in dispatchers_list]}")
+    
+    if not dispatchers_list:
+        raise ValueError("No dispatchers found! Check your configuration and dispatcher implementations.")
+    
+    # [调试信息 8] - 模拟运行信息
+    print("\n=== Running Simulations ===")
     for dispatcher in dispatchers_list:
         dispatcher_name = dispatcher.name
+        print(f"\nProcessing dispatcher: {dispatcher_name}")
+        
         # RUN SIMULATION
         ticks = run_dispatch_sim(dispatcher, config_file)
+        print(f"Ticks collected: {len(ticks)}")
+        
         # 读取运行结果并保存，等待绘图
-        ## 读取production
         times = []
         produced_tons_list = []
         service_count_list = []
         waiting_truck_count_list = []
-        # ticks 是一个字典 key为时间，value为一个字典，包含了当前时间的所有信息
+        
         for tick in ticks.values():
             if 'mine_states' not in tick:
                 continue
@@ -139,6 +170,13 @@ def run_simulation(config_file=None):
             produced_tons_list.append(tick['produced_tons'])
             service_count_list.append(tick['service_count'])
             waiting_truck_count_list.append(tick['waiting_truck_count'])
+        
+        # [调试信息 9] - 数据收集结果
+        print(f"Data collected for {dispatcher_name}:")
+        print(f"- Number of time points: {len(times)}")
+        print(f"- Total produced tons: {sum(produced_tons_list)}")
+        print(f"- Average service count: {sum(service_count_list)/len(service_count_list) if service_count_list else 0}")
+        
         states_dict[dispatcher_name] = {
             'times': times,
             'produced_tons_list': produced_tons_list,
@@ -146,9 +184,16 @@ def run_simulation(config_file=None):
             'waiting_truck_count_list': waiting_truck_count_list,
             'summary': ticks['summary']
         }
+    
+    # [调试信息 10] - 最终状态字典
+    print("\n=== Final States Summary ===")
+    print(f"States dictionary keys: {states_dict.keys()}")
+    print("Drawing charts...")
+    
     # 绘制图表
     charter.draw(states_dict)
     charter.save()
+    print("Charts saved successfully!")
 
 def run_visualization(tick_file=None):
     visual_grapher = VisualGrapher(tick_file)
@@ -191,7 +236,11 @@ def main():
 
 
 if __name__ == "__main__":
-    config_path = sys.argv[1]
+    parser = argparse.ArgumentParser(description='Run mine simulation')
+    parser.add_argument('-f', '--file', type=str, default="D:/git clone/openmines/openmines/src/conf/north_pit_mine.json", help='Path to configuration file')
+    args = parser.parse_args()
+    
+    config_path = args.file
     run_simulation(config_file=config_path)
 
 

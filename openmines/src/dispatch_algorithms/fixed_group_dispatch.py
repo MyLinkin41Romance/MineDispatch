@@ -104,7 +104,7 @@ class FixedGroupDispatcher(BaseDispatcher):
 # Test the dispatcher
 if __name__ == "__main__":
     dispatcher = FixedGroupDispatcher()
-    config_file = "/Users/mac/PycharmProjects/truck_shovel_mix/openmines_project/openmines/src/conf/north_pit_mine.json"
+    config_file = "../conf/north_pit_mine.json"
     from openmines.src.mine import Mine
 
     def load_config(filename):
@@ -145,7 +145,7 @@ if __name__ == "__main__":
         for dumper_config in dump_site_config['dumpers']:
             for _ in range(dumper_config['count']):
                 dumper = Dumper(
-                    name=f"{dump_site_config['name']}-点位{_}",
+                    name=f"{dump_site_config['name']}-{_}",
                     dumper_cycle_time=dumper_config['cycle_time'],
                     position_offset=dumper_config['position_offset']
                 )

@@ -439,9 +439,9 @@ class Mine:
             self.env.process(truck.run(is_rl_training=True))
 
 
-    def dump_frames(self,total_time):
-        """使用TickGenerator记录仿真过程中的数据
-        将数据写入到文件中
+    def dump_frames(self, total_time):
+        """使用 TickGenerator 记录仿真过程中的数据
+        将数据写入到文件中，并生成只包含 truck_states 的 JSON 文件
         :return:
         """
         # tick generator
@@ -449,7 +449,14 @@ class Mine:
         assert self.tick_generator is not None, "tick_generator can not be None"
         print("dumping frames...")
         self.tick_generator.run()
+        
         # 获得年月日时分秒的字符串表示
         time_str = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        
+        # 写入完整的 JSON 文件
         ticks = self.tick_generator.write_to_file(file_name=f'MINE:{self.name}_ALGO:{self.dispatcher.name}_TIME:{time_str}.json')
+        
+        # 写入只包含 truck_states 的 JSON 文件
+        self.tick_generator.write_truck_states_to_file(file_name=f'truck_states_ONLY_TIME-{time_str}.json')
+        
         return ticks

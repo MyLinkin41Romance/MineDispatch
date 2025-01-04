@@ -64,10 +64,10 @@ class Truck:
         self.last_breakdown_time = 0
         self.event_pool = EventPool()
         # the probalistics of the truck
-        self.expected_working_time_without_breakdown = 60*6  # in minutes
-        self.expected_working_time_until_unrepairable = 60*24*7*7  # in minutes
-        self.repair_avg_time = 10
-        self.repair_std_time = 3
+        self.expected_working_time_without_breakdown = 60*999  # in minutes
+        self.expected_working_time_until_unrepairable = 60*24*999*999  # in minutes
+        self.repair_avg_time = 0
+        self.repair_std_time = 0
         # truck status
         self.status = "idle"
         self.truck_load = 0  # in tons, the current load of the truck
@@ -95,6 +95,16 @@ class Truck:
         assert target_location is not self.current_location, "target_location can not be the same as current_location"
         assert distance >= 0, "distance can not be negative"
         assert self.truck_speed > 0, "truck_speed can not be negative"
+        
+         # 获取目标装载区索引和对象
+        dest_load_index: int = self.dispatcher.give_init_order(truck=self, mine=self.mine)
+        load_site: LoadSite = self.mine.load_sites[dest_load_index]
+
+        # 调用封装函数更新目标位置
+        self.update_target_location(new_target_location=load_site)
+
+
+
         # 记录当前路程的信息
         self.target_location = target_location
         self.journey_start_time = self.env.now
@@ -137,20 +147,21 @@ class Truck:
         # other_trucks_on_road中的每个车导致堵车的概率会叠加在一起取平均成为最终的堵车概率分布
         truck_positions = [truck.journey_coverage for truck in other_trucks_on_road]
         # 每个卡车的正态分布的标准差
-        sd = 0.1  # 根据3sigma原则，这个值代表这个车辆对堵车的影响会在+-0.3总路程的范围内
-        # 位置的范围
+        # 调整正态分布标准差，减少堵车概率影响
+        sd = 0.3  # 增加标准差，扩大每辆卡车的影响范围，减少高峰叠加概率
         x = np.linspace(0, 1, 1000)
-        # 初始化堵车的概率为0
         total_prob = np.zeros_like(x)
-        # 对每辆卡车
-        for i, position in enumerate(truck_positions):
-            # 计算在每个位置的堵车概率
+
+        # 累积堵车概率
+        for position in truck_positions:
             prob = norm.pdf(x, position, sd)
-            # 将这个卡车的堵车概率加到总的堵车概率上
-            total_prob = total_prob + prob
-        # 正规化总的堵车概率
-        total_prob = total_prob / len(truck_positions)
-        # 使用蒙特卡洛方法来决定是否会发生堵车
+            total_prob += prob
+
+        # 正规化
+        if len(truck_positions) > 0:
+            total_prob /= len(truck_positions)
+
+        # 使用蒙特卡洛方法决定是否发生堵车
         try:
             if np.sum(total_prob) == 0:
                 probabilities = np.ones_like(total_prob) / len(total_prob)
@@ -158,21 +169,28 @@ class Truck:
                 probabilities = total_prob / (np.sum(total_prob))
             jam_position = np.random.choice(x, p=probabilities)
         except:
-            print("bug")
-        # 在jam_position处使用weibull分布，采样一个可能的堵车时间
-        jam_time = np.random.weibull(2) * 10
+            jam_position = 0  # 如果计算异常，不发生堵车
+
+        # 减少堵车持续时间
+        jam_time = np.random.weibull(3) * 5  # 增加Weibull分布参数，降低堵车时间
         time_to_jam = jam_position * duration
+
+        # 修改触发条件，增加所需车辆数
         if time_to_jam < jam_time:
-            # 如果到达堵车区域的时间小于堵车时间，那么就会发生堵车
-            is_jam = True if len(truck_positions) > 3 else False
-            self.mine.random_event_pool.add_event(Event(self.env.now + time_to_jam, "RoadEvent:jam",
-                                                        f'Time:<{self.env.now + time_to_jam}> Truck:[{self.name}] is jammed at road from {self.current_location.name} '
-                                                        f'to {self.target_location.name} for {jam_time:.2f} minutes',
-                                                        info={"name": self.name, "status": "jam", "speed": 0,
-                                                              "start_location": self.current_location.name,
-                                                                "end_location": self.target_location.name,
-                                                              "start_time": self.env.now, "est_end_time": self.env.now + time_to_jam + jam_time}))
-            self.logger.info(f"Time:<{self.last_breakdown_time}> Truck:[{self.name}] is jammed at {self.current_location.name} to {self.target_location.name} for {jam_time:.2f} minutes")
+            is_jam = True if len(truck_positions) > 5 else False  # 从3辆增加到5辆
+            if is_jam:
+                # 记录堵车事件
+                self.mine.random_event_pool.add_event(Event(
+                    self.env.now + time_to_jam, "RoadEvent:jam",
+                    f'Time:<{self.env.now + time_to_jam}> Truck:[{self.name}] is jammed at road from {self.current_location.name} '
+                    f'to {self.target_location.name} for {jam_time:.2f} minutes',
+                    info={"name": self.name, "status": "jam", "speed": 0.1,  # 引入最低速度机制
+                        "start_location": self.current_location.name,
+                        "end_location": self.target_location.name,
+                        "start_time": self.env.now,
+                        "est_end_time": self.env.now + time_to_jam + jam_time}
+                ))
+                self.logger.info(f"Time:<{self.env.now}> Truck:[{self.name}] is jammed at {self.current_location.name} to {self.target_location.name} for {jam_time:.2f} minutes")
         else:
             is_jam = False
 
@@ -293,8 +311,16 @@ class Truck:
             dest_load_index: int = yield self.env.process(self.wait_for_decision())
         else:
             dest_load_index: int = self.dispatcher.give_init_order(truck=self, mine=self.mine)  # TODO:允许速度规划
-        self.first_order_time = self.env.now
-        self.target_location = self.mine.load_sites[dest_load_index]
+
+            # 获取目标装载区索引和对象
+        dest_load_index: int = self.dispatcher.give_init_order(truck=self, mine=self.mine)
+        load_site: LoadSite = self.mine.load_sites[dest_load_index]
+
+        # 调用封装函数更新目标位置
+        self.update_target_location(new_target_location=load_site)
+
+
+
 
         move_distance:float = self.mine.road.charging_to_load[dest_load_index]
         load_site: LoadSite = self.mine.load_sites[dest_load_index]
@@ -352,6 +378,15 @@ class Truck:
             else:
                 dest_unload_index: int = self.dispatcher.give_haul_order(truck=self, mine=self.mine)
             dest_unload_site: DumpSite = self.mine.dump_sites[dest_unload_index]
+
+                    # 获取目标装载区索引和对象
+            dest_load_index: int = self.dispatcher.give_init_order(truck=self, mine=self.mine)
+            load_site: LoadSite = self.mine.load_sites[dest_load_index]
+
+            # 调用封装函数更新目标位置
+            self.update_target_location(new_target_location=load_site)
+
+
             move_distance: float = self.mine.road.get_distance(truck=self, target_site=dest_unload_site)
             self.target_location = dest_unload_site
 
@@ -404,6 +439,16 @@ class Truck:
             else:
                 dest_load_index: int = self.dispatcher.give_back_order(truck=self, mine=self.mine)
             dest_load_site: LoadSite = self.mine.load_sites[dest_load_index]
+            
+            # 记录 target_location 的变更
+            previous_target_location = self.target_location.name if self.target_location else "None"
+            self.target_location = dest_load_site
+            self.logger.info(
+                f'Time:<{self.env.now}> Truck:[{self.name}] target_location changed from {previous_target_location} to {self.target_location.name}'
+            )
+
+
+
             move_distance: float = self.mine.road.get_distance(truck=self, target_site=dest_load_site)
             self.target_location = dest_load_site
             self.logger.debug(f"Time:<{self.env.now}> Truck:[{self.name}] Start moving to ORDER({dest_load_index}):{dest_load_site.name}, move distance is {move_distance}, speed: {self.truck_speed}")
@@ -503,3 +548,21 @@ class Truck:
         if self.env.now >= random.expovariate(1.0 / self.expected_working_time_until_unrepairable):
             return None
         return 0  # 未发生故障则返回0维修时间
+
+
+    def update_target_location(self, new_target_location):
+        """
+        检查并更新目标位置。如果目标位置发生变化，则更新目标位置并记录日志。
+
+        :param new_target_location: 新目标位置
+        """
+        # 日志记录 target_location 的变更
+        previous_target_location = self.target_location.name if self.target_location else "None"
+        
+        # 检查目标位置是否发生变化
+        if self.target_location != new_target_location:
+            self.target_location = new_target_location
+            self.logger.info(
+                f'Time:<{self.env.now}> Truck:[{self.name}] target_location changed from {previous_target_location} to {self.target_location.name}'
+            )
+

@@ -1,0 +1,158 @@
+{
+    "mine": {
+      "name": "ZongyangMine"
+    },
+    "dispatcher": {
+      "type": ["FixedGroupDispatcher","SQDispatcher","ImprovedAntColonyDispatcher"]
+    },
+    "charging_site": {
+      "name": "NorthPitMineChargingSite",
+      "position": [0, 0],
+      "trucks": [
+        {"type": "OilTruck", "count": 6, "capacity": 100, "speed": 20}
+      ]
+    },
+    "load_sites": [
+      {
+        "name": "LoadSite1",
+        "position": [0.854, 0.215],
+        "shovels": [
+          {"name": "LoadSite1-Shovel-1", "tons": 15, "cycle_time": 2,"position_offset": [0,0]}
+          
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-LoadSite1-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-LoadSite2",
+        "position": [0.810, 0.430],
+        "shovels": [
+          {"name": "NorthPitMine-LoadSite2-Shovel-1", "tons": 15, "cycle_time": 2,"position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-LoadSite2-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-LoadSite3",
+        "position": [0.485, 0.533],
+        "shovels": [
+          {"name": "NorthPitMine-LoadSite3-Shovel-1", "tons": 15, "cycle_time": 2,"position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-LoadSite3-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-LoadSite4",
+        "position": [0.231, 0.587],
+        "shovels": [
+          {"name": "NorthPitMine-LoadSite4-Shovel-1", "tons": 15, "cycle_time": 2,"position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-LoadSite4-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-LoadSite5",
+        "position": [0.025, 0.398],
+        "shovels": [
+          {"name": "NorthPitMine-LoadSite5-Shovel-1", "tons": 15, "cycle_time": 2,"position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-LoadSite5-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-LoadSite6",
+        "position": [0, 0.120],
+        "shovels": [
+          {"name": "NorthPitMine-LoadSite6-Shovel-1", "tons": 15, "cycle_time": 2,"position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-LoadSite6-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      }
+    ],
+    "dump_sites": [
+      {
+        "name": "NorthPitMine-DumpSite1",
+        "position": [0.276, 0.184],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-DumpSite1-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-DumpSite2",
+        "position": [0.245, 0.160],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-DumpSite2-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-DumpSite3",
+        "position": [0.937, 0.186],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-DumpSite3-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-DumpSite4",
+        "position": [0.945, 0.213],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-DumpSite4-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      },
+      {
+        "name": "NorthPitMine-DumpSite5",
+        "position": [0.988, 0.247],
+        "dumpers": [
+          {"count": 1, "cycle_time": 0.5, "position_offset": [0, 0]}
+        ],
+        "parkinglot": {
+          "name": "NorthPitMine-DumpSite5-ParkingLot",
+          "position_offset": [0, 0]
+        }
+      }
+    ],
+    "road": {
+      "road_matrix": [
+        [0.668, 0.686, 0.090, 0.095, 0.150],
+        [0.847, 0.865, 0.381, 0.331, 0.281],
+        [0.616, 0.634, 0.752, 0.702, 0.652],
+        [0.794, 0.812, 0.901, 0.911, 0.971],
+        [0.875, 0.895, 0.985, 0.995, 1.055],
+        [0.905, 0.923, 1.000, 1.010, 1.070]
+      ],
+      "charging_to_load_road_matrix": [0.200, 0.430, 0.650, 0.862, 0.920,0.860],
+      "road_event_params": {
+          "lambda_repair": 1e-6,
+          "mu_repair_duration": 0
+      }
+    },
+    "sim_time": 480
+  }
+  
