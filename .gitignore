@@ -172,3 +172,34 @@ cython_debug/
 #  and can be added to the global gitignore or merged into this file.  For a more nuclear
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
+
+# 忽略训练日志
+openmines/src/dispatch_algorithms/training_logs/
+openmines/src/dispatch_algorithms/training_logs/*.csv
+
+# 忽略模型文件
+*.pt
+*.h5
+*.ckpt
+
+# 忽略本地配置文件
+*.env
+config.json
+config.yaml
+
+# 忽略临时和缓存文件
+__pycache__/
+*.log
+*.tmp
+*.bak
+
+# 忽略Jupyter Notebook缓存
+.ipynb_checkpoints/
+
+# 忽略Windows系统文件
+Thumbs.db
+.DS_Store
+
+openmines/src/utils/results
+openmines/results
+openmines/openmines/results
