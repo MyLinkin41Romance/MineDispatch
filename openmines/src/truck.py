@@ -1,5 +1,5 @@
 import random
-
+import traceback
 import numpy as np
 import simpy
 import numpy as np
@@ -100,8 +100,7 @@ class Truck:
         dest_load_index: int = self.dispatcher.give_init_order(truck=self, mine=self.mine)
         load_site: LoadSite = self.mine.load_sites[dest_load_index]
 
-        # 调用封装函数更新目标位置
-        self.update_target_location(new_target_location=load_site)
+
 
 
 
@@ -379,12 +378,14 @@ class Truck:
                 dest_unload_index: int = self.dispatcher.give_haul_order(truck=self, mine=self.mine)
             dest_unload_site: DumpSite = self.mine.dump_sites[dest_unload_index]
 
-                    # 获取目标装载区索引和对象
+            # 更新目标位置为目标卸载区
+            self.update_target_location(new_target_location=dest_unload_site)
+            
+            # 获取目标装载区索引和对象
             dest_load_index: int = self.dispatcher.give_init_order(truck=self, mine=self.mine)
             load_site: LoadSite = self.mine.load_sites[dest_load_index]
 
-            # 调用封装函数更新目标位置
-            self.update_target_location(new_target_location=load_site)
+
 
 
             move_distance: float = self.mine.road.get_distance(truck=self, target_site=dest_unload_site)
@@ -439,13 +440,9 @@ class Truck:
             else:
                 dest_load_index: int = self.dispatcher.give_back_order(truck=self, mine=self.mine)
             dest_load_site: LoadSite = self.mine.load_sites[dest_load_index]
-            
-            # 记录 target_location 的变更
-            previous_target_location = self.target_location.name if self.target_location else "None"
-            self.target_location = dest_load_site
-            self.logger.info(
-                f'Time:<{self.env.now}> Truck:[{self.name}] target_location changed from {previous_target_location} to {self.target_location.name}'
-            )
+
+            # 调用封装函数更新目标位置
+            self.update_target_location(new_target_location=dest_load_site)
 
 
 
@@ -553,16 +550,22 @@ class Truck:
     def update_target_location(self, new_target_location):
         """
         检查并更新目标位置。如果目标位置发生变化，则更新目标位置并记录日志。
-
-        :param new_target_location: 新目标位置
         """
-        # 日志记录 target_location 的变更
+        current_time = self.env.now
         previous_target_location = self.target_location.name if self.target_location else "None"
-        
-        # 检查目标位置是否发生变化
+
+
+
         if self.target_location != new_target_location:
             self.target_location = new_target_location
-            self.logger.info(
-                f'Time:<{self.env.now}> Truck:[{self.name}] target_location changed from {previous_target_location} to {self.target_location.name}'
-            )
+
+            log_message = f'Time:<{current_time}> Truck:[{self.name}] target_location changed from {previous_target_location} to {self.target_location.name}'
+
+            # 写入主日志
+            self.logger.info(log_message)
+
+            # 写入单独日志
+            target_location_logger = self.mine.global_logger.get_target_location_logger()
+            target_location_logger.info(log_message)
+
 
