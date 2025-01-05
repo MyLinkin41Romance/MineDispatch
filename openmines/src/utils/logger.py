@@ -48,3 +48,25 @@ class MineLogger:
             logger.addHandler(self.FILE_HANDLER)
         logger.setLevel(logging.DEBUG)
         return logger
+
+    def get_target_location_logger(self):
+        """
+        创建并返回用于记录 target_location_changes.log 的独立日志记录器
+        """
+        log_file = self.log_path / "target_location_changes.log"
+        logger = logging.getLogger("target_location_logger")
+
+        if not logger.handlers:  # 避免重复添加处理器
+            file_handler = logging.FileHandler(log_file, mode="a", encoding="utf-8")
+            file_handler.setLevel(logging.INFO)
+            file_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(message)s'))
+            logger.addHandler(file_handler)
+
+        logger.setLevel(logging.INFO)
+
+        # 强制刷新
+        for handler in logger.handlers:
+            if isinstance(handler, logging.FileHandler):
+                handler.flush = lambda: handler.stream.flush()
+
+        return logger
