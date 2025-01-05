@@ -14,16 +14,14 @@ PROJECT_ROOT_PATH = Path(__file__).parent.parent.parent
 LOG_FILE_PATH = PROJECT_ROOT_PATH / "src" / "data" / "logs"
 
 # 车辆状态
-ON_CHARGING_SITE = -1  # 在充电站
-ON_ROAD_TO_FIRST_LOAD = -2  # 从充电站到第一个装载点
-UNHAULING = 0  # 从卸载区到装载区
-WAIT_FOR_LOAD = 1  # 等待装载
-LOADING = 2  # 装载中
-HAULING = 3  # 从装载区到卸载区
-WAIT_FOR_DUMP = 4  # 等待卸载
-DUMPING = 5  # 卸载中
-REPAIRING = 6  # 维修中
-UNREPAIRABLE = 7  # 无法维修，返回充电场
+IDLE = 1  # 在充电站
+MOVING = 2  # 从充电站到第一个装载点, 从卸载区到装载区, 从装载区到卸载区
+WAITING_FOR_SHOVEL = 3  # 等待装载
+LOADING = 4  # 装载中
+WAITING_FOR_DUMPER = 7  # 等待卸载
+UNLOADING = 8  # 卸载中
+REPAIRING = 10  # 维修中
+UNREPAIRABLE = 11  # 无法维修，返回充电场
 
 class TickGenerator:
     """
@@ -55,7 +53,6 @@ class TickGenerator:
 
         # 遍历产生每个tick
         for tick in range(self.tick_num):
-            # print(f"tick: {tick}")
             cur_time = tick
             truck_states = dict()
             load_site_states = dict()
@@ -65,166 +62,91 @@ class TickGenerator:
 
             for truck in self.mine.trucks:
                 event_pool = truck.event_pool
-                # 判断卡车状态
                 past_events = event_pool.get_event_by_time(cur_time+0.1)
                 future_events = event_pool.get_event_by_time(cur_time+0.1, mode="future")
                 status = None
                 position = None
                 truck_position = np.array([0.0, 0.0])
-                ## 车辆在充电场
-                if len(past_events)==0:
-                    status = -1  # 没有事件、仅有一个调度事件==还在空载状态，位置处于充电站
-                    truck_position = np.array(charging_site.position) + np.array([0.0, 0.0])
-                ## 车辆在从充电场到装载点的路上
-                if len(past_events)==2 and past_events[-1].event_type=="init":
-                    """init example:
-                        info={"name": self.name, "status": event_name, "speed": manual_speed if manual_speed is not None else self.truck_speed,
-                                              "start_time": self.env.now, "est_end_time": self.env.now+duration, "end_time": None,
-                                              "start_location": self.current_location.name,
-                                              "target_location": target_location.name,
-                                              "distance": distance, "duration": None}
-                    """
-                    status = -2  # 卡车已经得到了订单并且已经开始从充电站移动到第一个装载点
 
-                    # 计算卡车位置
+                if len(past_events) == 0:
+                    status = IDLE  # 车辆状态为 IDLE (1)，表示在充电站
+                    truck_position = np.array(charging_site.position) + np.array([0.0, 0.0])
+
+                if len(past_events) == 2 and past_events[-1].event_type == "init":
+                    status = MOVING  # 车辆状态为 MOVING (2)，表示正在移动
                     last_event = past_events[-1]
-                    # 时间计算
                     cur_time_delta = cur_time - last_event.info["start_time"]
                     time_ratio = cur_time_delta / (last_event.info["est_end_time"] - last_event.info["start_time"])
-                    # 方向计算
                     target_load_site = self.mine.get_dest_obj_by_name(last_event.info["target_location"])
                     direction = np.array(target_load_site.position) - np.array(charging_site.position)
                     truck_position = np.array(charging_site.position) + time_ratio * direction
 
-                ## 车辆在装载点等待装载
-                if past_events[-1].event_type=="wait shovel":
-                    """wait shovel example:
-                    info={"name": self.name, "status": "waiting for shovel",
-                                            "start_time": self.env.now, "end_time": None,
-                                            "shovel": shovel.name, "wait_duration": None}
-                    """
-                    status = 1
-                    # 计算卡车位置
-                    # 等待装载位置=装载区位置+停车场相对位置偏移=停车场位置
+                if past_events[-1].event_type == "wait shovel":
+                    status = WAITING_FOR_SHOVEL  # 车辆状态为 WAITING_FOR_SHOVEL (3)，表示等待铲车装载
                     truck_cur_location_name = truck.current_location.name
                     cur_load_site = self.mine.get_dest_obj_by_name(truck_cur_location_name)
                     parkinglot = cur_load_site.parking_lot
-
                     queue_index = past_events[-1].info["queue_index"]
                     shovel_name = past_events[-1].info["shovel"]
                     shovel = self.mine.get_service_vehicle_by_name(shovel_name)
-                    truck_position = np.array(shovel.position) - np.array([0.05, 0.0]) - (queue_index+1)*np.array([0.035,0.0])  # 已经处理过
+                    truck_position = np.array(shovel.position) - np.array([0.05, 0.0]) - (queue_index+1)*np.array([0.035,0.0])
 
-                ## 车辆在装载点装载
-                if past_events[-1].event_type=="get shovel":
-                    """get shovel example:
-                    info={"name": self.name, "status": "loading on shovel",
-                                                "start_time": self.env.now, "end_time": None,
-                                                "shovel": shovel.name, "load_duration": None}
-                    """
-                    status = 2
-                    # 计算卡车位置
-                    # 装载位置=装载区位置+铲子相对位置偏移=铲子位置
+                if past_events[-1].event_type == "get shovel":
+                    status = LOADING  # 车辆状态为 LOADING (4)，表示正在装载
                     shovel = self.mine.get_service_vehicle_by_name(past_events[-1].info["shovel"])
                     loading_position = np.array(shovel.position) - np.array([0.05, 0.0])
                     truck_position = loading_position
 
-                ## 车辆满载 从装载点前往卸载点中
-                if past_events[-1].event_type=="haul":
-                    """haul example:
-                    info={"name": self.name, "status": event_name, "speed": manual_speed if manual_speed is not None else self.truck_speed,
-                                              "start_time": self.env.now, "est_end_time": self.env.now+duration, "end_time": None,
-                                              "start_location": self.current_location.name,
-                                              "target_location": target_location.name,
-                                              "distance": distance, "duration": None}
-                    """
-                    status = 3
-
-                    # 计算卡车位置
-                    # 时间计算
+                if past_events[-1].event_type == "haul":
+                    status = MOVING  # 车辆状态为 MOVING (2)，表示正在运输
                     last_event = past_events[-1]
                     cur_time_delta = cur_time - last_event.info["start_time"]
                     end_time = last_event.info["end_time"] if last_event.info["end_time"] is not None else last_event.info["est_end_time"]
                     time_ratio = cur_time_delta / (end_time - last_event.info["start_time"])
-                    # 方向计算
                     cur_load_site = self.mine.get_dest_obj_by_name(last_event.info["start_location"])
                     target_unload_site = self.mine.get_dest_obj_by_name(last_event.info["target_location"])
                     direction = np.array(target_unload_site.position) - np.array(cur_load_site.position)
                     truck_position = np.array(cur_load_site.position) + time_ratio * direction
 
-                ## 车辆在卸载点等待卸载
-                if past_events[-1].event_type=="wait dumper":
-                    """wait dumper example:
-                    info={"name": self.name, "status": "waiting for dumper",
-                                                    "start_time": self.env.now, "end_time": None,
-                                                    "dumper": dumper.name, "wait_duration": None}
-                    
-                    """
-                    status = 4
-                    # 计算卡车位置
-                    # 等待卸载位置=卸载区位置+停车场相对位置偏移=停车场位置
+                if past_events[-1].event_type == "wait dumper":
+                    status = WAITING_FOR_DUMPER  # 车辆状态为 WAITING_FOR_DUMPER (7)，表示等待卸载车
                     truck_cur_location_name = truck.current_location.name
                     parkinglot = self.mine.get_dest_obj_by_name(truck_cur_location_name).parking_lot
-                    truck_position = np.array(parkinglot.position)  # 已经处理过
+                    truck_position = np.array(parkinglot.position)
 
-                ## 车辆在卸载点卸载
-                if past_events[-1].event_type=="get dumper":
-                    """get dumper example:
-                    info={"name": self.name, "status": "unloading on dumper",
-                                                    "start_time": self.env.now, "end_time": None,
-                                                    "dumper": dumper.name, "unload_duration": None}
-                    """
-                    status = 5
-                    # 计算卡车位置
-                    # 卸载位置=卸载区位置+dumper相对位置偏移=dumper位置
+                if past_events[-1].event_type == "get dumper":
+                    status = UNLOADING  # 车辆状态为 UNLOADING (8)，表示正在卸载
                     dumper = self.mine.get_service_vehicle_by_name(past_events[-1].info["dumper"])
-                    truck_position = np.array(dumper.position)  # 已经处理过
+                    truck_position = np.array(dumper.position)
 
-                ## 车辆空载 从卸载点前往装载点中
-                if past_events[-1].event_type=="unhaul":
-                    """unhaul example:
-                    info={"name": self.name, "status": event_name, "speed": manual_speed if manual_speed is not None else self.truck_speed,
-                                              "start_time": self.env.now, "est_end_time": self.env.now+duration, "end_time": None,
-                                              "start_location": self.current_location.name,
-                                              "target_location": target_location.name,
-                                              "distance": distance, "duration": None}
-                    """
-                    status = 0
-                    # 计算卡车位置
-                    # 时间计算
+                if past_events[-1].event_type == "unhaul":
+                    status = MOVING  # 车辆状态为 MOVING (2)，表示正在返回
                     last_event = past_events[-1]
                     cur_time_delta = cur_time - last_event.info["start_time"]
                     end_time = last_event.info["end_time"] if last_event.info["end_time"] is not None else last_event.info["est_end_time"]
                     time_ratio = cur_time_delta / (end_time - last_event.info["start_time"])
-                    # 方向计算
                     cur_unload_site = self.mine.get_dest_obj_by_name(last_event.info["start_location"])
                     target_load_site = self.mine.get_dest_obj_by_name(last_event.info["target_location"])
                     direction = np.array(target_load_site.position) - np.array(cur_unload_site.position)
                     truck_position = np.array(cur_unload_site.position) + time_ratio * direction
 
-                # 车辆损坏事件，则车辆在原地不动
                 if "breakdown" in past_events[-1].event_type:
-                    status = 6
-                    # 计算卡车位置
-                    # 车辆损坏后位置=上一时间位置
-                    truck_position = truck_position  # 已经处理过
+                    status = REPAIRING  # 车辆状态为 REPAIRING (10)，表示维修中
+                    truck_position = truck_position
 
                 if "unrepairable" in past_events[-1].event_type:
-                    status = 7
-                    # 计算卡车位置
-                    # 车辆完全损坏后位置=充电区位置
-                    # 获取chargingSite位置
-                    truck_position = np.array(self.mine.charging_site.position).astype(float)  # 已经处理过
+                    status = UNREPAIRABLE  # 车辆状态为 UNREPAIRABLE (11)，表示无法维修，返回充电站
+                    truck_position = np.array(self.mine.charging_site.position).astype(float)
 
                 truck_state = {
-                    "name":truck.name,
-                    "time":cur_time,
-                    "state":status,
-                    "position":list(truck_position if truck_position is not None else (0.5,0.5)),
+                    "name": truck.name,
+                    "time": cur_time,
+                    "state": status,
+                    "position": list(truck_position if truck_position is not None else (0.5, 0.5)),
                     "dest_code": truck.target_location.name if truck.target_location else "Unknown"
                 }
                 truck_states[truck.name] = truck_state
-
+                
             # 统计每一个loadsite的信息
             for loadsite in self.mine.load_sites:
                 # 统计停车场的信息
